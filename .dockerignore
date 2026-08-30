@@ -1,0 +1,27 @@
+# Virtual environments
+venv/
+ENV/
+env/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest & test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git tracking
+.git/
+.gitignore
+
+# OS temporary files
+.DS_Store
+Thumbs.db
+
+# Documentation & IDE
+README.md
+.vscode/
+.idea/

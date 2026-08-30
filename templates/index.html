@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager | Cloud-Native Platform</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-cloud"></i>
+                </div>
+                <div>
+                    <h1>Cloud Task Manager</h1>
+                    <p class="subtitle">Phase 1: REST API & Microservice Core</p>
+                </div>
+            </div>
+            <div class="health-badge" id="healthBadge" title="System Health Status">
+                <span class="status-dot"></span>
+                <span id="healthText">Checking Health...</span>
+            </div>
+        </header>
+
+        <!-- Metrics Dashboard -->
+        <section class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-icon total"><i class="fa-solid fa-list-check"></i></div>
+                <div class="metric-data">
+                    <span class="metric-value" id="totalTasksCount">0</span>
+                    <span class="metric-label">Total Tasks</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon pending"><i class="fa-solid fa-clock"></i></div>
+                <div class="metric-data">
+                    <span class="metric-value" id="pendingTasksCount">0</span>
+                    <span class="metric-label">Pending</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon completed"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="metric-data">
+                    <span class="metric-value" id="completedTasksCount">0</span>
+                    <span class="metric-label">Completed</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Task Management Card -->
+        <main class="main-card">
+            <!-- Add Task Form -->
+            <form id="addTaskForm" class="add-task-form">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="taskTitleInput" 
+                        placeholder="What needs to be done?" 
+                        autocomplete="off" 
+                        required
+                    />
+                    <button type="submit" class="btn btn-primary" id="addTaskBtn">
+                        <i class="fa-solid fa-plus"></i> Add Task
+                    </button>
+                </div>
+            </form>
+
+            <!-- Filter Controls -->
+            <div class="filter-bar">
+                <div class="filter-tabs">
+                    <button class="filter-btn active" data-filter="all">All Tasks</button>
+                    <button class="filter-btn" data-filter="pending">Pending</button>
+                    <button class="filter-btn" data-filter="completed">Completed</button>
+                </div>
+                <span class="task-counter" id="filterCount">0 items</span>
+            </div>
+
+            <!-- Task List Container -->
+            <div class="task-list-container">
+                <ul id="taskList" class="task-list">
+                    <!-- Tasks populated dynamically via JS -->
+                </ul>
+                <div id="emptyState" class="empty-state hidden">
+                    <i class="fa-regular fa-clipboard"></i>
+                    <p class="empty-title">No tasks found</p>
+                    <p class="empty-sub">Add a new task above to get started.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Cloud-Native Application Deployment and Monitoring Platform &bull; Final Year Project</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
