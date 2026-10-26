@@ -1,0 +1,31 @@
+# =============================================================================
+# Cloud Prometheus Scrape Configuration Reference (Grafana Cloud / External)
+# =============================================================================
+# IMPORTANT:
+# - Local `prometheus/prometheus.yml` uses Docker bridge DNS (`task-manager-app:5001`)
+#   and is for local Docker Compose ONLY.
+# - Outside Docker Compose (such as in Grafana Cloud), Docker service names do
+#   not resolve. Scraping must target the public Render HTTPS hostname and
+#   authenticate using the Bearer token configured in `METRICS_TOKEN`.
+#
+# In Grafana Cloud (Free Tier), you do NOT need to run a Prometheus server
+# container. Instead, configure "Metrics Endpoint" (Cloud Prometheus Scrape Job)
+# in the Grafana Cloud UI with the equivalent settings shown below, or use
+# this snippet if running Grafana Alloy / standalone Prometheus.
+# =============================================================================
+
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: 'cloud-native-platform-render'
+    scheme: https
+    metrics_path: '/metrics'
+    authorization:
+      type: Bearer
+      # Replace in Grafana Cloud UI secret store — never commit a real token here
+      credentials: '<YOUR_METRICS_TOKEN_PLACEHOLDER>'
+    static_configs:
+      - targets:
+          - '<YOUR_RENDER_SERVICE_NAME>.onrender.com'

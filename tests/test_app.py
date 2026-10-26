@@ -169,3 +169,54 @@ def test_global_500_exception_handler(client):
     data = response.get_json()
     assert data == {"error": "Internal server error"}
 
+
+def test_metrics_endpoint_requires_bearer_token_when_configured(client, monkeypatch):
+    """Test GET /metrics rejects unauthenticated or wrong-token requests when METRICS_TOKEN is set."""
+    monkeypatch.setenv("METRICS_TOKEN", "test-secret-metrics-token")
+
+    # 1. Missing Authorization header -> 401
+    resp_missing = client.get("/metrics")
+    assert resp_missing.status_code == 401
+    assert "WWW-Authenticate" in resp_missing.headers
+
+    # 2. Wrong Bearer token -> 401
+    resp_wrong = client.get(
+        "/metrics",
+        headers={"Authorization": "Bearer wrong-token"}
+    )
+    assert resp_wrong.status_code == 401
+
+    # 3. Correct Bearer token -> 200 with Prometheus metrics
+    resp_valid = client.get(
+        "/metrics",
+        headers={"Authorization": "Bearer test-secret-metrics-token"}
+    )
+    assert resp_valid.status_code == 200
+    assert "http_requests_total" in resp_valid.data.decode("utf-8")
+
+    # 4. /health remains unauthenticated for Render health checks
+    health_resp = client.get("/health")
+    assert health_resp.status_code == 200
+    assert health_resp.get_json() == {"status": "healthy"}
+
+
+def test_metrics_endpoint_fails_closed_in_cloud_when_token_unset(client, monkeypatch):
+    """Test GET /metrics fails closed (401) if REQUIRE_METRICS_AUTH=true or RENDER=true but METRICS_TOKEN is missing."""
+    monkeypatch.delenv("METRICS_TOKEN", raising=False)
+    monkeypatch.setenv("REQUIRE_METRICS_AUTH", "true")
+
+    response = client.get("/metrics")
+    assert response.status_code == 401
+
+
+def test_500_error_route_restricted_in_production(client):
+    """Test GET /test-500-error cannot be invoked when TESTING is False (production)."""
+    app.config["TESTING"] = False
+    try:
+        response = client.get("/test-500-error")
+        assert response.status_code == 404
+        assert response.get_json() == {"error": "Resource not found"}
+    finally:
+        app.config["TESTING"] = True
+
+

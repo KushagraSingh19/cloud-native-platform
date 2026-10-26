@@ -17,6 +17,19 @@ htmlcov/
 .git/
 .gitignore
 
+# Secrets, credentials & environment files (never bake into image layers)
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# Cloud & local monitoring configs not needed inside app image
+render.yaml
+prometheus/
+grafana/
+docker-compose.yml
+
 # OS temporary files
 .DS_Store
 Thumbs.db

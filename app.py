@@ -1,3 +1,4 @@
+import hmac
 import logging
 import os
 import sys
@@ -7,6 +8,30 @@ from flask import Flask, jsonify, render_template, request, g, Response
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
+
+# -----------------------------------------------------------------------------
+# Security: Metrics Endpoint Bearer-Token Authentication
+# -----------------------------------------------------------------------------
+# When METRICS_TOKEN is set, or when running in cloud/production mode
+# (REQUIRE_METRICS_AUTH=true or RENDER=true), GET /metrics requires:
+#   Authorization: Bearer <METRICS_TOKEN>
+# When neither is set (local Docker Compose / default pytest), /metrics is open.
+# /health is always unauthenticated so Render health checks always pass.
+def is_metrics_authorized() -> bool:
+    """Verify whether the current request is authorized to access /metrics."""
+    token = os.environ.get("METRICS_TOKEN", "").strip()
+    require_auth = (
+        os.environ.get("REQUIRE_METRICS_AUTH", "").strip().lower() == "true"
+        or os.environ.get("RENDER", "").strip().lower() == "true"
+    )
+
+    if not token:
+        # Fail closed in cloud/production if METRICS_TOKEN was not configured
+        return not require_auth
+
+    auth_header = request.headers.get("Authorization", "")
+    expected_header = f"Bearer {token}"
+    return hmac.compare_digest(auth_header, expected_header)
 
 # -----------------------------------------------------------------------------
 # Centralized Logging Configuration
@@ -157,7 +182,21 @@ def health_check():
 # -----------------------------------------------------------------------------
 @app.route("/metrics", methods=["GET"])
 def metrics():
-    """Returns application metrics in Prometheus exposition format."""
+    """Returns application metrics in Prometheus exposition format.
+
+    Protected by Bearer-token authentication when METRICS_TOKEN is configured
+    or when REQUIRE_METRICS_AUTH=true / RENDER=true is set.
+    """
+    if not is_metrics_authorized():
+        app.logger.warning(
+            "401 Unauthorized: GET /metrics — missing or invalid Bearer token"
+        )
+        return Response(
+            "Unauthorized: valid Bearer token required",
+            status=401,
+             headers={"WWW-Authenticate": 'Bearer realm="metrics"'},
+            mimetype="text/plain"
+        )
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
@@ -244,7 +283,14 @@ def delete_task(task_id):
 
 @app.route("/test-500-error", methods=["GET"])
 def trigger_500_error():
-    """Test endpoint that raises an unhandled exception for global 500 handler verification."""
+    """Test endpoint that raises an unhandled exception for global 500 handler verification.
+
+    Restricted strictly to test execution (app.config['TESTING'] == True);
+    returns 404 Not Found in production/non-test environments.
+    """
+    if not app.config.get("TESTING"):
+        app.logger.warning(f"404 Not Found: {request.method} {request.path}")
+        return jsonify({"error": "Resource not found"}), 404
     raise RuntimeError("Simulated internal exception for testing")
 
 

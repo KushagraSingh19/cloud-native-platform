@@ -1,0 +1,26 @@
+# =============================================================================
+# Render Blueprint Specification (Phase 10A)
+# =============================================================================
+# Deploys the stateless Flask Task Manager microservice on Render's Free tier
+# using the pre-built GHCR image published by GitHub Actions CI/CD (Phase 9).
+#
+# Note: Prometheus and Grafana are NOT deployed as public Render services;
+# cloud monitoring is handled securely by Grafana Cloud's Free tier scraping
+# the authenticated /metrics endpoint over HTTPS.
+# =============================================================================
+
+services:
+  - type: web
+    name: cloud-native-platform
+    runtime: image
+    image:
+      url: ghcr.io/kushagrasingh19/cloud-native-platform:latest
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: REQUIRE_METRICS_AUTH
+        value: "true"
+      # sync: false prompts you in the Render Dashboard to enter a secret token
+      # at deploy time without ever storing the secret in render.yaml or Git.
+      - key: METRICS_TOKEN
+        sync: false
