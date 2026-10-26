@@ -6,13 +6,17 @@ on:
   pull_request:
     branches: [main]
 
-# Restrict default token permissions to read-only; grant write only where needed
+# Default: read-only for all jobs unless overridden at job level
 permissions:
   contents: read
 
+env:
+  # Fully-lowercase GHCR image name (required by OCI spec)
+  IMAGE_NAME: ghcr.io/kushagrasingh19/cloud-native-platform
+
 jobs:
   # ─────────────────────────────────────────────────
-  # Job 1: Run pytest test suite
+  # Job 1: Run pytest test suite (push + PR)
   # ─────────────────────────────────────────────────
   test:
     name: Pytest – Unit Tests
@@ -34,12 +38,13 @@ jobs:
         run: pytest tests/ -v --tb=short
 
   # ─────────────────────────────────────────────────
-  # Job 2: Build Docker image (no push)
+  # Job 2: Build Docker image – CI check (push + PR)
+  #         Verifies the Dockerfile builds; does NOT push.
   # ─────────────────────────────────────────────────
   docker-build:
-    name: Docker – Build Image
+    name: Docker – Build Image (CI check)
     runs-on: ubuntu-latest
-    needs: test  # Only attempt build if tests pass
+    needs: test  # Only run if all tests pass
 
     steps:
       - name: Checkout repository
@@ -48,11 +53,62 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Build Docker image (no push)
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: false        # CI only – no push to registry
+          push: false
           tags: cloud-native-platform:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────────
+  # Job 3: Publish image to GHCR (push to main only)
+  #         Pull requests never trigger this job.
+  # ─────────────────────────────────────────────────
+  docker-publish:
+    name: Docker – Publish to GHCR
+    runs-on: ubuntu-latest
+    # Run only on direct pushes to main; skip for pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test  # Publish only after tests pass
+
+    # Grant packages:write to this job only; other jobs keep contents:read
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            # Tag with short commit SHA: sha-abc1234
+            type=sha,prefix=sha-,format=short
+            # Tag as 'latest' for every push to main
+            type=raw,value=latest,enable=true
+
+      - name: Build and push image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

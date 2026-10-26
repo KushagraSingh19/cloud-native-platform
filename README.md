@@ -1,8 +1,9 @@
 # Cloud-Native Application Deployment & Monitoring Platform
 
 [![CI](https://github.com/KushagraSingh19/cloud-native-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/KushagraSingh19/cloud-native-platform/actions/workflows/ci.yml)
+[![Docker Image](https://ghcr.io/kushagrasingh19/cloud-native-platform)](https://github.com/KushagraSingh19/cloud-native-platform/pkgs/container/cloud-native-platform)
 
-A complete, production-grade microservice application featuring a Flask REST API, web dashboard, Gunicorn WSGI server, Docker containerization, Prometheus metrics & server, Grafana visualization dashboards, structured logging, automated pytest test suite, and GitHub Actions CI pipeline.
+A complete, production-grade microservice application featuring a Flask REST API, web dashboard, Gunicorn WSGI server, Docker containerization, Prometheus metrics & server, Grafana visualization dashboards, structured logging, automated pytest test suite, GitHub Actions CI pipeline, and automated Docker image publishing to GHCR.
 
 ---
 
@@ -43,6 +44,7 @@ A complete, production-grade microservice application featuring a Flask REST API
 - **Phase 6**: Structured Application Logging & Global Exception Handling (`sys.stdout`, `INFO`/`WARNING`/`ERROR` levels)
 - **Phase 7**: Git Repository Initialization & Version Control Preparation
 - **Phase 8**: GitHub Actions Continuous Integration (`.github/workflows/ci.yml` — pytest + Docker build on every push/PR)
+- **Phase 9**: Docker Image Publishing to GitHub Container Registry (`ghcr.io/kushagrasingh19/cloud-native-platform`, commit-SHA + `latest` tags, push to `main` only)
 
 *(Note: Kubernetes and Cloud Deployment are planned for subsequent phases).*
 
@@ -54,7 +56,7 @@ A complete, production-grade microservice application featuring a Flask REST API
 Cloud-Native-Platform/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # GitHub Actions CI: pytest + Docker build on push/PR
+│       └── ci.yml          # GitHub Actions CI: pytest, Docker build (PR+push), GHCR publish (main only)
 ├── Dockerfile              # Production Docker build specification (Python 3.11 slim)
 ├── .dockerignore           # Docker context exclusion rules
 ├── .gitignore              # Git repository ignore rules
@@ -143,12 +145,13 @@ The CI pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.
 
 ### Pipeline Jobs
 
-| Job | Name | What it does |
-|---|---|---|
-| `test` | Pytest – Unit Tests | Sets up Python 3.11, installs `requirements.txt`, runs `pytest tests/ -v` |
-| `docker-build` | Docker – Build Image | Builds the `Dockerfile` image using Buildx (no push to registry) |
+| Job | Trigger | `needs` | Permissions | What it does |
+|---|---|---|---|---|
+| `test` | push + PR | — | `contents: read` | Python 3.11 → install deps → `pytest tests/ -v` |
+| `docker-build` | push + PR | `test` ✅ | `contents: read` | Buildx build, **no push** — CI Dockerfile verification |
+| `docker-publish` | **push to `main` only** | `test` ✅ | `contents: read` + **`packages: write`** | Login to GHCR → build & push image with SHA + `latest` tags |
 
-The `docker-build` job only runs **after** `test` passes (`needs: test`).
+> Pull requests **never** trigger `docker-publish`. The `packages: write` permission is scoped to that job only.
 
 ### Checking CI Status on GitHub
 
@@ -170,6 +173,37 @@ docker build -t cloud-native-platform:local .
 
 ---
 
+## 🐳 Docker Image – GitHub Container Registry (GHCR)
+
+The Docker image is automatically built and published to GHCR on every push to `main`.
+
+**Image location**: `ghcr.io/kushagrasingh19/cloud-native-platform`
+
+### Pulling the Image
+
+```bash
+# Pull the latest image (published from main branch)
+docker pull ghcr.io/kushagrasingh19/cloud-native-platform:latest
+
+# Pull a specific commit version (replace <sha> with the short commit hash)
+docker pull ghcr.io/kushagrasingh19/cloud-native-platform:sha-<sha>
+```
+
+### Running the Published Image Locally
+
+```bash
+docker run -p 5001:5001 ghcr.io/kushagrasingh19/cloud-native-platform:latest
+```
+
+Then open: [http://localhost:5001](http://localhost:5001)
+
+### Viewing Published Packages on GitHub
+
+All published image versions are listed at:
+👉 **[https://github.com/KushagraSingh19/cloud-native-platform/pkgs/container/cloud-native-platform](https://github.com/KushagraSingh19/cloud-native-platform/pkgs/container/cloud-native-platform)**
+
+---
+
 ## 🎓 Viva Voce Explanation Guide
 
 1. **Microservice Core**: Modular Flask app with separation of concerns (REST API, frontend templates, Gunicorn WSGI).
@@ -178,3 +212,4 @@ docker build -t cloud-native-platform:local .
 4. **Scraping & Storage**: Prometheus pulls metrics every 5s over container DNS resolution (`task-manager-app:5001`) with volume persistence.
 5. **Visual Monitoring**: Grafana displays 10 real-time panels via automated provisioning.
 6. **Logging & Resilience**: Structured STDOUT logs with millisecond latency and global JSON error handlers (400, 404, 500).
+7. **CI/CD Pipeline**: GitHub Actions workflow runs pytest on every push/PR, verifies Docker build, and publishes OCI-compliant image to GHCR using `GITHUB_TOKEN` with minimal scoped permissions.
