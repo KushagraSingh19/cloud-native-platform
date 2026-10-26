@@ -1,6 +1,8 @@
 # Cloud-Native Application Deployment & Monitoring Platform
 
-A complete, production-grade microservice application featuring a Flask REST API, web dashboard, Gunicorn WSGI server, Docker containerization, Prometheus metrics & server, Grafana visualization dashboards, structured logging, and automated pytest test suite.
+[![CI](https://github.com/KushagraSingh19/cloud-native-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/KushagraSingh19/cloud-native-platform/actions/workflows/ci.yml)
+
+A complete, production-grade microservice application featuring a Flask REST API, web dashboard, Gunicorn WSGI server, Docker containerization, Prometheus metrics & server, Grafana visualization dashboards, structured logging, automated pytest test suite, and GitHub Actions CI pipeline.
 
 ---
 
@@ -40,8 +42,9 @@ A complete, production-grade microservice application featuring a Flask REST API
 - **Phase 5**: Grafana Visualization & Automated Provisioning (`grafana/`, port `3000`, 10-panel dashboard)
 - **Phase 6**: Structured Application Logging & Global Exception Handling (`sys.stdout`, `INFO`/`WARNING`/`ERROR` levels)
 - **Phase 7**: Git Repository Initialization & Version Control Preparation
+- **Phase 8**: GitHub Actions Continuous Integration (`.github/workflows/ci.yml` — pytest + Docker build on every push/PR)
 
-*(Note: CI/CD automation, GitHub Actions, Kubernetes, and Cloud Deployment are planned for subsequent phases).*
+*(Note: Kubernetes and Cloud Deployment are planned for subsequent phases).*
 
 ---
 
@@ -49,6 +52,9 @@ A complete, production-grade microservice application featuring a Flask REST API
 
 ```
 Cloud-Native-Platform/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions CI: pytest + Docker build on push/PR
 ├── Dockerfile              # Production Docker build specification (Python 3.11 slim)
 ├── .dockerignore           # Docker context exclusion rules
 ├── .gitignore              # Git repository ignore rules
@@ -126,6 +132,41 @@ docker compose logs -f task-manager
 | `GET` | `/api/tasks/<id>` | Get specific task | `200 OK` / `404 Not Found` |
 | `PUT` | `/api/tasks/<id>` | Update task | `200 OK` / `400` / `404` |
 | `DELETE` | `/api/tasks/<id>` | Delete task | `200 OK` / `404 Not Found` |
+
+---
+
+## 🔄 GitHub Actions CI Pipeline
+
+The CI pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs automatically on:
+- Every **push** to the `main` branch
+- Every **pull request** targeting `main`
+
+### Pipeline Jobs
+
+| Job | Name | What it does |
+|---|---|---|
+| `test` | Pytest – Unit Tests | Sets up Python 3.11, installs `requirements.txt`, runs `pytest tests/ -v` |
+| `docker-build` | Docker – Build Image | Builds the `Dockerfile` image using Buildx (no push to registry) |
+
+The `docker-build` job only runs **after** `test` passes (`needs: test`).
+
+### Checking CI Status on GitHub
+
+1. Go to **[https://github.com/KushagraSingh19/cloud-native-platform/actions](https://github.com/KushagraSingh19/cloud-native-platform/actions)**
+2. Click on the **CI** workflow to see all runs.
+3. Click any run to see per-job and per-step logs.
+4. The green/red badge at the top of this README reflects the latest `main` branch status.
+
+### Running CI Checks Locally
+
+```bash
+# Run tests (same command used in CI)
+source venv/bin/activate
+pytest tests/ -v
+
+# Build the Docker image locally (same as CI docker-build job)
+docker build -t cloud-native-platform:local .
+```
 
 ---
 
